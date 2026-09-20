@@ -12,19 +12,6 @@ const searchInput = document.getElementById("searchInput");
 const results = document.getElementById("results");
 const filterButtons = document.querySelectorAll(".filter");
 const categories = document.querySelectorAll(".category");
-const searchHint = document.querySelector(".search-hint");
-
-
-// ========================================
-// ПОДСКАЗКА ПОИСКА
-// ========================================
-
-if (searchHint) {
-
-    searchHint.textContent =
-        "введи либо свой вопрос❓ / либо клиента❓ / либо какой продукт🥩 / либо какое оборудование⚙️ / либо любое ключевое слово 💬";
-
-}
 
 
 // ========================================
@@ -47,7 +34,8 @@ function getCachedKnowledgeBase() {
 
         if (
             !parsed ||
-            !Array.isArray(parsed.data)
+            !Array.isArray(parsed.data) ||
+            !parsed.timestamp
         ) {
             return null;
         }
@@ -57,7 +45,7 @@ function getCachedKnowledgeBase() {
     } catch (error) {
 
         console.warn(
-            "Не удалось прочитать кэш:",
+            "Ошибка чтения кэша:",
             error
         );
 
@@ -92,66 +80,51 @@ function saveKnowledgeBaseToCache(data) {
 
 
 // ========================================
-// Загрузка свежей базы
+// Загрузка базы с API
 // ========================================
 
-async function refreshKnowledgeBase() {
+async function fetchKnowledgeBase() {
 
-    try {
+    const response = await fetch(API_URL, {
+        method: "GET",
+        redirect: "follow",
+        cache: "no-store"
+    });
 
-        const response = await fetch(API_URL, {
-            method: "GET",
-            redirect: "follow",
-            cache: "no-store"
-        });
-
-        if (!response.ok) {
-            throw new Error(
-                "HTTP " + response.status
-            );
-        }
-
-        const rawText =
-            await response.text();
-
-        const data =
-            JSON.parse(rawText);
-
-        if (!data.success) {
-            throw new Error(
-                data.error ||
-                "API вернул ошибку"
-            );
-        }
-
-        knowledgeBase =
-            Array.isArray(data.data)
-                ? data.data
-                : [];
-
-        console.log(
-            "Загружено свежих записей:",
-            knowledgeBase.length
+    if (!response.ok) {
+        throw new Error(
+            "HTTP " + response.status
         );
-
-        saveKnowledgeBaseToCache(
-            knowledgeBase
-        );
-
-        renderResults();
-
-        return true;
-
-    } catch (error) {
-
-        console.error(
-            "ОШИБКА API:",
-            error
-        );
-
-        return false;
     }
 
+    const rawText =
+        await response.text();
+
+    const data =
+        JSON.parse(rawText);
+
+    if (!data.success) {
+        throw new Error(
+            data.error ||
+            "API вернул ошибку"
+        );
+    }
+
+    knowledgeBase =
+        Array.isArray(data.data)
+            ? data.data
+            : [];
+
+    console.log(
+        "Загружено записей:",
+        knowledgeBase.length
+    );
+
+    saveKnowledgeBaseToCache(
+        knowledgeBase
+    );
+
+    renderResults();
 }
 
 
@@ -166,7 +139,7 @@ async function loadKnowledgeBase() {
 
 
     // ------------------------------------
-    // Если есть кэш — показываем сразу
+    // Есть свежий кэш
     // ------------------------------------
 
     if (
@@ -174,40 +147,63 @@ async function loadKnowledgeBase() {
         Array.isArray(cached.data)
     ) {
 
+        const cacheAge =
+            Date.now() -
+            cached.timestamp;
+
+
+        // Кэш ещё свежий
+        if (cacheAge < CACHE_TTL) {
+
+            knowledgeBase =
+                cached.data;
+
+            console.log(
+                "База загружена из кэша:",
+                knowledgeBase.length
+            );
+
+            renderResults();
+
+            return;
+        }
+
+
+        // --------------------------------
+        // Кэш старый
+        // --------------------------------
+
         knowledgeBase =
             cached.data;
 
         console.log(
-            "База показана из кэша:",
-            knowledgeBase.length
+            "Показываем старую базу и обновляем..."
         );
 
         renderResults();
 
+        try {
 
-        // --------------------------------
-        // Тихо обновляем в фоне
-        // --------------------------------
+            await fetchKnowledgeBase();
 
-        refreshKnowledgeBase()
-            .then(success => {
+        } catch (error) {
 
-                if (success) {
+            console.warn(
+                "Не удалось обновить базу:",
+                error
+            );
 
-                    console.log(
-                        "База обновлена в фоне"
-                    );
+            // Старую рабочую базу оставляем
+            // пользователю ничего не показываем
 
-                }
-
-            });
+        }
 
         return;
     }
 
 
     // ------------------------------------
-    // Если кэша нет — обычная загрузка
+    // Кэша нет — первая загрузка
     // ------------------------------------
 
     results.innerHTML = `
@@ -216,19 +212,31 @@ async function loadKnowledgeBase() {
         </div>
     `;
 
-    const success =
-        await refreshKnowledgeBase();
 
+    try {
 
-    if (!success) {
+        await fetchKnowledgeBase();
+
+    } catch (error) {
+
+        console.error(
+            "ОШИБКА API:",
+            error
+        );
 
         results.innerHTML = `
             <div class="empty-state">
-                <p><strong>Не удалось загрузить базу знаний.</strong></p>
-                <p>Проверьте соединение и попробуйте обновить страницу.</p>
+                <p>
+                    <strong>
+                        Не удалось загрузить базу знаний.
+                    </strong>
+                </p>
+
+                <p>
+                    ${escapeHtml(error.message)}
+                </p>
             </div>
         `;
-
     }
 
 }
@@ -591,7 +599,12 @@ function renderResults() {
 
         results.innerHTML = `
             <div class="empty-state">
-                <p><strong>Ничего не найдено.</strong></p>
+                <p>
+                    <strong>
+                        Ничего не найдено.
+                    </strong>
+                </p>
+
                 <p>
                     Попробуйте изменить запрос
                     или выбрать другой раздел.
