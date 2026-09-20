@@ -24,11 +24,11 @@ body {
    ======================================== */
 
 .header {
-    padding: 14px 0 6px;
+    padding: 10px 0 3px;
 }
 
 .logo {
-    font-size: 25px;
+    font-size: 24px;
     font-weight: 800;
     letter-spacing: -0.7px;
     color: #ff8100;
@@ -36,21 +36,21 @@ body {
 }
 
 .subtitle {
-    margin-top: 3px;
+    margin-top: 2px;
     color: #777;
-    font-size: 13px;
+    font-size: 12px;
 }
 
 .search {
-    margin-top: 9px;
+    margin-top: 7px;
 }
 
 .search input {
     width: 100%;
-    height: 46px;
-    padding: 0 17px;
+    height: 43px;
+    padding: 0 15px;
     border: 1px solid #ddd;
-    border-radius: 10px;
+    border-radius: 9px;
     background: white;
     font-size: 15px;
     outline: none;
@@ -68,11 +68,11 @@ body {
    ======================================== */
 
 .search-hint {
-    margin-top: 4px;
+    margin-top: 3px;
     padding-left: 3px;
     color: #999;
-    font-size: 11px;
-    line-height: 1.25;
+    font-size: 10px;
+    line-height: 1.2;
 }
 
 
@@ -81,9 +81,9 @@ body {
    ======================================== */
 
 .section-title {
-    margin: 10px 0 6px;
-    font-size: 16px;
-    line-height: 1.2;
+    margin: 7px 0 4px;
+    font-size: 15px;
+    line-height: 1.15;
 }
 
 
@@ -93,17 +93,17 @@ body {
 
 .filters {
     display: flex;
-    gap: 5px;
+    gap: 4px;
     flex-wrap: wrap;
 }
 
 .filter {
     border: 1px solid #ddd;
     background: white;
-    padding: 5px 11px;
+    padding: 4px 10px;
     border-radius: 999px;
     cursor: pointer;
-    font-size: 12px;
+    font-size: 11px;
     transition: 0.15s;
 }
 
@@ -125,15 +125,15 @@ body {
 .categories {
     display: grid;
     grid-template-columns: repeat(6, 1fr);
-    gap: 6px;
+    gap: 5px;
 }
 
 .category {
     background: white;
     border: 1px solid #e5e5e5;
-    border-radius: 8px;
-    padding: 8px 7px;
-    font-size: 12px;
+    border-radius: 7px;
+    padding: 7px 5px;
+    font-size: 11px;
     font-weight: 600;
     text-align: center;
     cursor: pointer;
@@ -151,7 +151,7 @@ body {
    ======================================== */
 
 #resultsSection {
-    margin-top: 12px;
+    margin-top: 8px;
 }
 
 #results {
@@ -377,9 +377,16 @@ mark.search-highlight {
 @media (max-width: 900px) {
 
     .categories {
-        grid-template-columns: repeat(3, 1fr);
+        grid-template-columns: repeat(6, minmax(125px, 1fr));
+        overflow-x: auto;
+        overflow-y: hidden;
+        scrollbar-width: thin;
+        padding-bottom: 3px;
     }
 
+    .category {
+        min-width: 125px;
+    }
 }
 
 
@@ -390,27 +397,89 @@ mark.search-highlight {
 @media (max-width: 600px) {
 
     .container {
-        width: min(100% - 20px, 1100px);
+        width: calc(100% - 16px);
     }
 
     .header {
-        padding-top: 12px;
+        padding: 9px 0 2px;
     }
 
     .logo {
-        font-size: 23px;
+        font-size: 22px;
+    }
+
+    .subtitle {
+        font-size: 11px;
+        margin-top: 2px;
+    }
+
+    .search {
+        margin-top: 6px;
     }
 
     .search input {
-        height: 44px;
+        height: 42px;
+        font-size: 15px;
+        padding: 0 14px;
+    }
+
+    .search-hint {
+        font-size: 9px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .section-title {
+        margin: 6px 0 4px;
+        font-size: 14px;
+    }
+
+    .filters {
+        flex-wrap: nowrap;
+        overflow-x: auto;
+        overflow-y: hidden;
+        scrollbar-width: none;
+        padding-bottom: 2px;
+    }
+
+    .filters::-webkit-scrollbar {
+        display: none;
+    }
+
+    .filter {
+        flex: 0 0 auto;
+        white-space: nowrap;
+        padding: 4px 9px;
+        font-size: 11px;
     }
 
     .categories {
-        grid-template-columns: repeat(2, 1fr);
+        display: flex;
+        gap: 5px;
+        overflow-x: auto;
+        overflow-y: hidden;
+        scrollbar-width: none;
+        padding-bottom: 2px;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    .categories::-webkit-scrollbar {
+        display: none;
     }
 
     .category {
-        padding: 9px 6px;
+        flex: 0 0 125px;
+        min-width: 125px;
+        padding: 8px 5px;
+        font-size: 11px;
     }
 
+    #resultsSection {
+        margin-top: 7px;
+    }
+
+    #results {
+        margin-bottom: 30px;
+    }
 }
