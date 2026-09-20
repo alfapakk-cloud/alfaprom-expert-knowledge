@@ -2,6 +2,9 @@
 
 const API_URL = "https://script.google.com/macros/s/AKfycbykGLEHYtcSBbtbuKxsUxC6PZzzQWtiJ5q5Thl8jgi_PdNTTFvXjCYRxyWSHO1QQG-h/exec";
 
+const CACHE_KEY = "alfaprom_knowledge_base_v1";
+const CACHE_TTL = 1000 * 60 * 60; // 1 час
+
 let knowledgeBase = [];
 let currentFilter = "Все";
 
@@ -9,19 +12,90 @@ const searchInput = document.getElementById("searchInput");
 const results = document.getElementById("results");
 const filterButtons = document.querySelectorAll(".filter");
 const categories = document.querySelectorAll(".category");
+const searchHint = document.querySelector(".search-hint");
 
 
 // ========================================
-// Загрузка базы
+// ПОДСКАЗКА ПОИСКА
 // ========================================
 
-async function loadKnowledgeBase() {
+if (searchHint) {
 
-    results.innerHTML = `
-        <div class="empty-state">
-            <p>Загрузка базы знаний...</p>
-        </div>
-    `;
+    searchHint.textContent =
+        "введи либо свой вопрос❓ / либо клиента❓ / либо какой продукт🥩 / либо какое оборудование⚙️ / либо любое ключевое слово 💬";
+
+}
+
+
+// ========================================
+// КЭШ
+// ========================================
+
+function getCachedKnowledgeBase() {
+
+    try {
+
+        const cached =
+            localStorage.getItem(CACHE_KEY);
+
+        if (!cached) {
+            return null;
+        }
+
+        const parsed =
+            JSON.parse(cached);
+
+        if (
+            !parsed ||
+            !Array.isArray(parsed.data)
+        ) {
+            return null;
+        }
+
+        return parsed;
+
+    } catch (error) {
+
+        console.warn(
+            "Не удалось прочитать кэш:",
+            error
+        );
+
+        return null;
+    }
+
+}
+
+
+function saveKnowledgeBaseToCache(data) {
+
+    try {
+
+        localStorage.setItem(
+            CACHE_KEY,
+            JSON.stringify({
+                timestamp: Date.now(),
+                data: data
+            })
+        );
+
+    } catch (error) {
+
+        console.warn(
+            "Не удалось сохранить базу в кэш:",
+            error
+        );
+
+    }
+
+}
+
+
+// ========================================
+// Загрузка свежей базы
+// ========================================
+
+async function refreshKnowledgeBase() {
 
     try {
 
@@ -32,38 +106,131 @@ async function loadKnowledgeBase() {
         });
 
         if (!response.ok) {
-            throw new Error("HTTP " + response.status);
+            throw new Error(
+                "HTTP " + response.status
+            );
         }
 
-        const rawText = await response.text();
-        const data = JSON.parse(rawText);
+        const rawText =
+            await response.text();
+
+        const data =
+            JSON.parse(rawText);
 
         if (!data.success) {
-            throw new Error(data.error || "API вернул ошибку");
+            throw new Error(
+                data.error ||
+                "API вернул ошибку"
+            );
         }
 
-        knowledgeBase = Array.isArray(data.data)
-            ? data.data
-            : [];
+        knowledgeBase =
+            Array.isArray(data.data)
+                ? data.data
+                : [];
 
         console.log(
-            "Загружено записей:",
+            "Загружено свежих записей:",
+            knowledgeBase.length
+        );
+
+        saveKnowledgeBaseToCache(
+            knowledgeBase
+        );
+
+        renderResults();
+
+        return true;
+
+    } catch (error) {
+
+        console.error(
+            "ОШИБКА API:",
+            error
+        );
+
+        return false;
+    }
+
+}
+
+
+// ========================================
+// Загрузка базы
+// ========================================
+
+async function loadKnowledgeBase() {
+
+    const cached =
+        getCachedKnowledgeBase();
+
+
+    // ------------------------------------
+    // Если есть кэш — показываем сразу
+    // ------------------------------------
+
+    if (
+        cached &&
+        Array.isArray(cached.data)
+    ) {
+
+        knowledgeBase =
+            cached.data;
+
+        console.log(
+            "База показана из кэша:",
             knowledgeBase.length
         );
 
         renderResults();
 
-    } catch (error) {
 
-        console.error("ОШИБКА API:", error);
+        // --------------------------------
+        // Тихо обновляем в фоне
+        // --------------------------------
+
+        refreshKnowledgeBase()
+            .then(success => {
+
+                if (success) {
+
+                    console.log(
+                        "База обновлена в фоне"
+                    );
+
+                }
+
+            });
+
+        return;
+    }
+
+
+    // ------------------------------------
+    // Если кэша нет — обычная загрузка
+    // ------------------------------------
+
+    results.innerHTML = `
+        <div class="empty-state">
+            <p>Загрузка базы знаний...</p>
+        </div>
+    `;
+
+    const success =
+        await refreshKnowledgeBase();
+
+
+    if (!success) {
 
         results.innerHTML = `
             <div class="empty-state">
                 <p><strong>Не удалось загрузить базу знаний.</strong></p>
-                <p>${escapeHtml(error.message)}</p>
+                <p>Проверьте соединение и попробуйте обновить страницу.</p>
             </div>
         `;
+
     }
+
 }
 
 
@@ -71,7 +238,10 @@ async function loadKnowledgeBase() {
 // Поиск
 // ========================================
 
-searchInput.addEventListener("input", renderResults);
+searchInput.addEventListener(
+    "input",
+    renderResults
+);
 
 
 // ========================================
@@ -80,21 +250,26 @@ searchInput.addEventListener("input", renderResults);
 
 filterButtons.forEach(button => {
 
-    button.addEventListener("click", function () {
+    button.addEventListener(
+        "click",
+        function () {
 
-        currentFilter = this.dataset.filter;
+            currentFilter =
+                this.dataset.filter;
 
-        filterButtons.forEach(btn => {
+            filterButtons.forEach(btn => {
 
-            btn.classList.toggle(
-                "active",
-                btn.dataset.filter === currentFilter
-            );
+                btn.classList.toggle(
+                    "active",
+                    btn.dataset.filter === currentFilter
+                );
 
-        });
+            });
 
-        renderResults();
-    });
+            renderResults();
+
+        }
+    );
 
 });
 
@@ -105,34 +280,41 @@ filterButtons.forEach(button => {
 
 categories.forEach(category => {
 
-    category.addEventListener("click", function () {
+    category.addEventListener(
+        "click",
+        function () {
 
-        currentFilter = this.dataset.filter;
+            currentFilter =
+                this.dataset.filter;
 
-        filterButtons.forEach(btn => {
+            filterButtons.forEach(btn => {
 
-            btn.classList.toggle(
-                "active",
-                btn.dataset.filter === currentFilter
-            );
+                btn.classList.toggle(
+                    "active",
+                    btn.dataset.filter === currentFilter
+                );
 
-        });
-
-        renderResults();
-
-        const resultsSection =
-            document.getElementById("resultsSection");
-
-        if (resultsSection) {
-
-            window.scrollTo({
-                top: resultsSection.offsetTop - 15,
-                behavior: "smooth"
             });
 
-        }
+            renderResults();
 
-    });
+            const resultsSection =
+                document.getElementById(
+                    "resultsSection"
+                );
+
+            if (resultsSection) {
+
+                window.scrollTo({
+                    top:
+                        resultsSection.offsetTop - 15,
+                    behavior: "smooth"
+                });
+
+            }
+
+        }
+    );
 
 });
 
@@ -144,7 +326,8 @@ categories.forEach(category => {
 function getReliabilityScore(value) {
 
     const text =
-        String(value || "").toLowerCase();
+        String(value || "")
+            .toLowerCase();
 
     if (
         text.includes("высок") ||
@@ -182,19 +365,29 @@ function getSearchScore(item, words) {
     }
 
     const question =
-        String(item["Вопрос клиента"] || "").toLowerCase();
+        String(
+            item["Вопрос клиента"] || ""
+        ).toLowerCase();
 
     const answer =
-        String(item["Короткий ответ"] || "").toLowerCase();
+        String(
+            item["Короткий ответ"] || ""
+        ).toLowerCase();
 
     const product =
-        String(item["Продукт"] || "").toLowerCase();
+        String(
+            item["Продукт"] || ""
+        ).toLowerCase();
 
     const equipment =
-        String(item["Оборудование"] || "").toLowerCase();
+        String(
+            item["Оборудование"] || ""
+        ).toLowerCase();
 
     const category =
-        String(item["Категория"] || "").toLowerCase();
+        String(
+            item["Категория"] || ""
+        ).toLowerCase();
 
     let score = 0;
 
@@ -241,21 +434,29 @@ function highlightText(text, words) {
 
     let result = safeText;
 
-    const sortedWords = [...words]
-        .filter(word => word.length > 0)
-        .sort((a, b) => b.length - a.length);
+    const sortedWords =
+        [...words]
+            .filter(word => word.length > 0)
+            .sort(
+                (a, b) =>
+                    b.length - a.length
+            );
 
     sortedWords.forEach(word => {
 
-        const regex = new RegExp(
-            escapeRegExp(escapeHtml(word)),
-            "gi"
-        );
+        const regex =
+            new RegExp(
+                escapeRegExp(
+                    escapeHtml(word)
+                ),
+                "gi"
+            );
 
-        result = result.replace(
-            regex,
-            '<mark class="search-highlight">$&</mark>'
-        );
+        result =
+            result.replace(
+                regex,
+                '<mark class="search-highlight">$&</mark>'
+            );
 
     });
 
@@ -270,13 +471,19 @@ function highlightText(text, words) {
 function renderResults() {
 
     const query =
-        searchInput.value.trim().toLowerCase();
+        searchInput.value
+            .trim()
+            .toLowerCase();
 
-    const words = query
-        ? query.split(/\s+/).filter(Boolean)
-        : [];
+    const words =
+        query
+            ? query
+                .split(/\s+/)
+                .filter(Boolean)
+            : [];
 
-    let filtered = [...knowledgeBase];
+    let filtered =
+        [...knowledgeBase];
 
 
     // ------------------------------------
@@ -288,24 +495,31 @@ function renderResults() {
         const filter =
             currentFilter.toLowerCase();
 
-        filtered = filtered.filter(item => {
+        filtered =
+            filtered.filter(item => {
 
-            const product =
-                String(item["Продукт"] || "").toLowerCase();
+                const product =
+                    String(
+                        item["Продукт"] || ""
+                    ).toLowerCase();
 
-            const equipment =
-                String(item["Оборудование"] || "").toLowerCase();
+                const equipment =
+                    String(
+                        item["Оборудование"] || ""
+                    ).toLowerCase();
 
-            const category =
-                String(item["Категория"] || "").toLowerCase();
+                const category =
+                    String(
+                        item["Категория"] || ""
+                    ).toLowerCase();
 
-            return (
-                product.includes(filter) ||
-                equipment.includes(filter) ||
-                category.includes(filter)
-            );
+                return (
+                    product.includes(filter) ||
+                    equipment.includes(filter) ||
+                    category.includes(filter)
+                );
 
-        });
+            });
 
     }
 
@@ -316,18 +530,19 @@ function renderResults() {
 
     if (words.length) {
 
-        filtered = filtered.filter(item => {
+        filtered =
+            filtered.filter(item => {
 
-            const text =
-                Object.values(item)
-                    .join(" ")
-                    .toLowerCase();
+                const text =
+                    Object.values(item)
+                        .join(" ")
+                        .toLowerCase();
 
-            return words.every(word =>
-                text.includes(word)
-            );
+                return words.every(word =>
+                    text.includes(word)
+                );
 
-        });
+            });
 
     }
 
@@ -348,12 +563,18 @@ function renderResults() {
                 b["Достоверность"]
             );
 
-        // Сначала достоверность
-        if (reliabilityA !== reliabilityB) {
-            return reliabilityB - reliabilityA;
+        if (
+            reliabilityA !==
+            reliabilityB
+        ) {
+
+            return (
+                reliabilityB -
+                reliabilityA
+            );
+
         }
 
-        // Затем релевантность
         return (
             getSearchScore(b, words) -
             getSearchScore(a, words)
@@ -386,190 +607,209 @@ function renderResults() {
     // Карточки
     // ------------------------------------
 
-    results.innerHTML = filtered.map(item => {
+    results.innerHTML =
+        filtered.map(item => {
 
-        const product =
-            String(item["Продукт"] || "");
+            const product =
+                String(
+                    item["Продукт"] || ""
+                );
 
-        const equipment =
-            String(item["Оборудование"] || "");
+            const equipment =
+                String(
+                    item["Оборудование"] || ""
+                );
 
-        const category =
-            String(item["Категория"] || "");
+            const category =
+                String(
+                    item["Категория"] || ""
+                );
 
-        const reliability =
-            String(item["Достоверность"] || "");
+            const reliability =
+                String(
+                    item["Достоверность"] || ""
+                );
 
-        const status =
-            String(item["Статус проверки"] || "");
+            const status =
+                String(
+                    item["Статус проверки"] || ""
+                );
 
-        const source =
-            String(item["Источник"] || "");
+            const source =
+                String(
+                    item["Источник"] || ""
+                );
 
-        const sourceUrl =
-            String(item["Ссылка на источник"] || "");
+            const sourceUrl =
+                String(
+                    item["Ссылка на источник"] || ""
+                );
 
-        const question =
-            String(
-                item["Вопрос клиента"] ||
-                "Без названия"
-            );
+            const question =
+                String(
+                    item["Вопрос клиента"] ||
+                    "Без названия"
+                );
 
-        const answer =
-            String(item["Короткий ответ"] || "");
+            const answer =
+                String(
+                    item["Короткий ответ"] || ""
+                );
 
-        const id =
-            String(item["ID"] || "");
+            const id =
+                String(
+                    item["ID"] || ""
+                );
 
 
-        return `
-            <article class="knowledge-card">
+            return `
+                <article class="knowledge-card">
 
-                <div class="knowledge-tags">
+                    <div class="knowledge-tags">
+
+                        ${
+                            product
+                                ? `
+                                    <span class="knowledge-product">
+                                        ${highlightText(
+                                            product,
+                                            words
+                                        )}
+                                    </span>
+                                  `
+                                : ""
+                        }
+
+                        ${
+                            equipment
+                                ? `
+                                    <span class="knowledge-equipment">
+                                        ⚙️ ${highlightText(
+                                            equipment,
+                                            words
+                                        )}
+                                    </span>
+                                  `
+                                : ""
+                        }
+
+                        ${
+                            category
+                                ? `
+                                    <span class="knowledge-category">
+                                        ${highlightText(
+                                            category,
+                                            words
+                                        )}
+                                    </span>
+                                  `
+                                : ""
+                        }
+
+                    </div>
+
+
+                    <h3>
+                        ${highlightText(
+                            question,
+                            words
+                        )}
+                    </h3>
+
+
+                    <div class="answer-label">
+                        ОТВЕТ ЭКСПЕРТА
+                    </div>
+
+
+                    <p class="knowledge-answer">
+                        ${highlightText(
+                            answer,
+                            words
+                        )}
+                    </p>
+
+
+                    <div class="knowledge-meta">
+
+                        ${
+                            reliability
+                                ? `
+                                    <span>
+                                        ${escapeHtml(
+                                            reliability
+                                        )}
+                                    </span>
+                                  `
+                                : ""
+                        }
+
+                        ${
+                            status
+                                ? `
+                                    <span>
+                                        ✓ ${escapeHtml(
+                                            status
+                                        )}
+                                    </span>
+                                  `
+                                : ""
+                        }
+
+                    </div>
+
 
                     ${
-                        product
+                        source
                             ? `
-                                <span class="knowledge-product">
-                                    ${highlightText(
-                                        product,
-                                        words
-                                    )}
-                                </span>
+                                <div class="knowledge-source">
+
+                                    <span class="source-label">
+                                        Источник:
+                                    </span>
+
+                                    ${
+                                        sourceUrl
+                                            ? `
+                                                <a
+                                                    href="${escapeAttribute(
+                                                        sourceUrl
+                                                    )}"
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
+                                                >
+                                                    ${escapeHtml(
+                                                        source
+                                                    )}
+                                                </a>
+                                              `
+                                            : `
+                                                <span>
+                                                    ${escapeHtml(
+                                                        source
+                                                    )}
+                                                </span>
+                                              `
+                                    }
+
+                                </div>
                               `
                             : ""
                     }
 
-                    ${
-                        equipment
-                            ? `
-                                <span class="knowledge-equipment">
-                                    ⚙️ ${highlightText(
-                                        equipment,
-                                        words
-                                    )}
-                                </span>
-                              `
-                            : ""
-                    }
 
-                    ${
-                        category
-                            ? `
-                                <span class="knowledge-category">
-                                    ${highlightText(
-                                        category,
-                                        words
-                                    )}
-                                </span>
-                              `
-                            : ""
-                    }
+                    <button
+                        class="details-button"
+                        type="button"
+                        data-id="${escapeAttribute(id)}"
+                    >
+                        Подробнее →
+                    </button>
 
-                </div>
+                </article>
+            `;
 
-
-                <h3>
-                    ${highlightText(
-                        question,
-                        words
-                    )}
-                </h3>
-
-
-                <div class="answer-label">
-                    ОТВЕТ ЭКСПЕРТА
-                </div>
-
-
-                <p class="knowledge-answer">
-                    ${highlightText(
-                        answer,
-                        words
-                    )}
-                </p>
-
-
-                <div class="knowledge-meta">
-
-                    ${
-                        reliability
-                            ? `
-                                <span>
-                                    ${escapeHtml(
-                                        reliability
-                                    )}
-                                </span>
-                              `
-                            : ""
-                    }
-
-                    ${
-                        status
-                            ? `
-                                <span>
-                                    ✓ ${escapeHtml(
-                                        status
-                                    )}
-                                </span>
-                              `
-                            : ""
-                    }
-
-                </div>
-
-
-                ${
-                    source
-                        ? `
-                            <div class="knowledge-source">
-
-                                <span class="source-label">
-                                    Источник:
-                                </span>
-
-                                ${
-                                    sourceUrl
-                                        ? `
-                                            <a
-                                                href="${escapeAttribute(
-                                                    sourceUrl
-                                                )}"
-                                                target="_blank"
-                                                rel="noopener noreferrer"
-                                            >
-                                                ${escapeHtml(
-                                                    source
-                                                )}
-                                            </a>
-                                          `
-                                        : `
-                                            <span>
-                                                ${escapeHtml(
-                                                    source
-                                                )}
-                                            </span>
-                                          `
-                                }
-
-                            </div>
-                          `
-                        : ""
-                }
-
-
-                <button
-                    class="details-button"
-                    type="button"
-                    data-id="${escapeAttribute(id)}"
-                >
-                    Подробнее →
-                </button>
-
-            </article>
-        `;
-
-    }).join("");
+        }).join("");
 
 
     // ------------------------------------
@@ -605,7 +845,9 @@ function openKnowledge(id) {
     const item =
         knowledgeBase.find(
             knowledge =>
-                String(knowledge["ID"]) === String(id)
+                String(
+                    knowledge["ID"]
+                ) === String(id)
         );
 
     if (!item) {
@@ -616,14 +858,19 @@ function openKnowledge(id) {
 
 
     text +=
-        (item["Вопрос клиента"] ||
-        "Без названия") +
+        (
+            item["Вопрос клиента"] ||
+            "Без названия"
+        ) +
         "\n\n";
 
 
     text +=
         "ОТВЕТ ЭКСПЕРТА\n\n" +
-        (item["Короткий ответ"] || "") +
+        (
+            item["Короткий ответ"] ||
+            ""
+        ) +
         "\n\n";
 
 
@@ -707,11 +954,26 @@ function openKnowledge(id) {
 function escapeHtml(value) {
 
     return String(value)
-        .replace(/&/g, "&amp;")
-        .replace(/</g, "&lt;")
-        .replace(/>/g, "&gt;")
-        .replace(/"/g, "&quot;")
-        .replace(/'/g, "&#039;");
+        .replace(
+            /&/g,
+            "&amp;"
+        )
+        .replace(
+            /</g,
+            "&lt;"
+        )
+        .replace(
+            />/g,
+            "&gt;"
+        )
+        .replace(
+            /"/g,
+            "&quot;"
+        )
+        .replace(
+            /'/g,
+            "&#039;"
+        );
 
 }
 
@@ -719,11 +981,26 @@ function escapeHtml(value) {
 function escapeAttribute(value) {
 
     return String(value)
-        .replace(/&/g, "&amp;")
-        .replace(/"/g, "&quot;")
-        .replace(/'/g, "&#039;")
-        .replace(/</g, "&lt;")
-        .replace(/>/g, "&gt;");
+        .replace(
+            /&/g,
+            "&amp;"
+        )
+        .replace(
+            /"/g,
+            "&quot;"
+        )
+        .replace(
+            /'/g,
+            "&#039;"
+        )
+        .replace(
+            /</g,
+            "&lt;"
+        )
+        .replace(
+            />/g,
+            "&gt;"
+        );
 
 }
 
