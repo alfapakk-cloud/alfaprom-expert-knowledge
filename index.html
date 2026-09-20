@@ -3,12 +3,132 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
     <title>АЛЬФАПРОМ — База экспертных знаний</title>
+
+    <link rel="stylesheet" href="style.css">
 </head>
+
 <body>
 
-    <h1>АЛЬФАПРОМ</h1>
-    <p>База экспертных знаний</p>
+    <main class="container">
+
+        <header class="header">
+
+            <div class="logo">
+                АЛЬФАПРОМ
+            </div>
+
+            <div class="subtitle">
+                База экспертных знаний
+            </div>
+
+            <div class="search">
+                <input
+                    type="search"
+                    id="searchInput"
+                    placeholder="🔍  Что спрашивает клиент?"
+                    autocomplete="off"
+                >
+            </div>
+
+        </header>
+
+
+        <section>
+
+            <h2 class="section-title">
+                Разделы
+            </h2>
+
+            <div class="filters">
+
+                <button class="filter active" data-filter="Все">
+                    Все
+                </button>
+
+                <button class="filter" data-filter="Мясо">
+                    Мясо
+                </button>
+
+                <button class="filter" data-filter="Рыба">
+                    Рыба
+                </button>
+
+                <button class="filter" data-filter="Сыр">
+                    Сыр
+                </button>
+
+                <button class="filter" data-filter="Полуфабрикаты">
+                    Полуфабрикаты
+                </button>
+
+                <button class="filter" data-filter="Готовые">
+                    Готовые
+                </button>
+
+                <button class="filter" data-filter="Оборудование">
+                    Оборудование
+                </button>
+
+            </div>
+
+        </section>
+
+
+        <section>
+
+            <h2 class="section-title">
+                Популярные разделы
+            </h2>
+
+            <div class="categories">
+
+                <div class="category" data-filter="Мясо">
+                    🥩 Мясо
+                </div>
+
+                <div class="category" data-filter="Рыба">
+                    🐟 Рыба
+                </div>
+
+                <div class="category" data-filter="Сыр">
+                    🧀 Сыр
+                </div>
+
+                <div class="category" data-filter="Полуфабрикаты">
+                    🥟 Полуфабрикаты
+                </div>
+
+                <div class="category" data-filter="Готовые">
+                    🍱 Готовые продукты
+                </div>
+
+                <div class="category" data-filter="Оборудование">
+                    ⚙️ Оборудование
+                </div>
+
+            </div>
+
+        </section>
+
+
+        <section id="resultsSection">
+
+            <h2 class="section-title">
+                Результаты поиска
+            </h2>
+
+            <div id="results">
+                <p>Введите вопрос клиента или выберите раздел.</p>
+            </div>
+
+        </section>
+
+    </main>
+
+
+    <script src="script.js"></script>
 
 </body>
 </html>
