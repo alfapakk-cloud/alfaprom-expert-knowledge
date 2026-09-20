@@ -1,0 +1,134 @@
+* {
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+    font-family: Arial, Helvetica, sans-serif;
+    background: #f7f7f7;
+    color: #222;
+}
+
+.container {
+    width: min(1100px, calc(100% - 32px));
+    margin: 0 auto;
+}
+
+.header {
+    padding: 48px 0 32px;
+}
+
+.logo {
+    font-size: 30px;
+    font-weight: 800;
+    letter-spacing: -0.5px;
+}
+
+.subtitle {
+    margin-top: 6px;
+    color: #777;
+    font-size: 16px;
+}
+
+.search {
+    margin-top: 28px;
+}
+
+.search input {
+    width: 100%;
+    height: 64px;
+    padding: 0 24px;
+    border: 1px solid #ddd;
+    border-radius: 16px;
+    background: white;
+    font-size: 18px;
+    outline: none;
+}
+
+.search input:focus {
+    border-color: #ff8100;
+    box-shadow: 0 0 0 3px rgba(255, 129, 0, 0.12);
+}
+
+.section-title {
+    margin: 36px 0 16px;
+    font-size: 20px;
+}
+
+.filters {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.filter {
+    border: 1px solid #ddd;
+    background: white;
+    padding: 10px 18px;
+    border-radius: 999px;
+    cursor: pointer;
+    font-size: 14px;
+}
+
+.filter.active {
+    background: #ff8100;
+    color: white;
+    border-color: #ff8100;
+}
+
+.categories {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 14px;
+}
+
+.category {
+    background: white;
+    border: 1px solid #e5e5e5;
+    border-radius: 16px;
+    padding: 22px;
+    font-size: 17px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: 0.15s;
+}
+
+.category:hover {
+    transform: translateY(-2px);
+    border-color: #ff8100;
+}
+
+@media (max-width: 700px) {
+    .header {
+        padding-top: 28px;
+    }
+
+    .logo {
+        font-size: 25px;
+    }
+
+    .search input {
+        height: 56px;
+        font-size: 16px;
+    }
+
+    .categories {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+@media (max-width: 420px) {
+    .container {
+        width: min(100% - 20px, 1100px);
+    }
+
+    .categories {
+        grid-template-columns: 1fr 1fr;
+        gap: 10px;
+    }
+
+    .category {
+        padding: 18px 14px;
+        font-size: 15px;
+    }
+}
